@@ -386,6 +386,11 @@ const main = async () => {
     const { noble } = await initializeBluetooth(argv.bikeAdapter);
     console.log('[gym-cli] Bluetooth initialized; noble state:', noble?.state);
 
+    // Noble holds the HCI_CHANNEL_USER socket exclusively. Unset the env var
+    // before importing the app so bleno uses bindRaw instead of bindUser,
+    // avoiding EBUSY when both try to open the same adapter.
+    delete process.env.HCI_CHANNEL_USER;
+
     // Delay importing the heavy Gymnasticon runtime until after the environment
     // variables above are set so noble/bleno honor the adapter overrides.
     const { GymnasticonApp } = await import('./gymnasticon-app.js');

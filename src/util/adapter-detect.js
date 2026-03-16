@@ -34,6 +34,12 @@ function discoverAdapters() {
 }
 
 function bringUpAdapters(adapters) {
+  // Skip when HCI_CHANNEL_USER is set - noble will manage the adapter directly
+  // and bringing it up here causes a race where something grabs the HCI channel
+  // before noble can bind exclusively.
+  if (process.env.HCI_CHANNEL_USER) {
+    return;
+  }
   adapters.forEach(({ name }) => {
     try {
       execSync(`hciconfig ${name} up`, { stdio: 'ignore' });
