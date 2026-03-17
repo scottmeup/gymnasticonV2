@@ -206,7 +206,7 @@ sudo setcap cap_net_raw+eip "$(command -v node)" || true
 # Clone Gymnasticon repository
 APP_DIR="/opt/gymnasticon"
 sudo mkdir -p "$APP_DIR" # ensure the parent prefix exists before cloning
-sudo git clone https://github.com/4o4R/gymnasticonV2.git "$APP_DIR"
+sudo git clone https://github.com/Sc0ttmeup/gymnasticonV2.git "$APP_DIR"
 cd "$APP_DIR"
 sudo env \
     CXXFLAGS="-std=gnu++14" \
@@ -233,7 +233,8 @@ Requires=bluetooth.service
 [Service]
 Type=simple
 WorkingDirectory=/opt/gymnasticon
-ExecStart=/usr/bin/node /opt/gymnasticon/src/app/cli.js --config /etc/gymnasticon.json
+#ExecStart=/usr/bin/node /opt/gymnasticon/src/app/cli.js --config /etc/gymnasticon.json
+ExecStart=/opt/gymnasticon/start.sh
 Restart=always
 RestartSec=10
 StandardOutput=journal+console
