@@ -624,6 +624,10 @@ export class App {
   async reinitializeNoble(reason) {
     // Teaching note: force a fresh noble instance so the HCI socket is reopened.
     this.logger.log(`[gym-app] reinitializing noble (${reason})`);
+    // HCI_CHANNEL_USER leaves adapter DOWN on exit; bring it up before reinit.
+    try {
+      execSync(`hciconfig ${this.opts.bikeAdapter} up`, { stdio: 'ignore' });
+    } catch (_) { /* ignore */ }
     const { noble } = await initializeBluetooth(this.opts.bikeAdapter, { forceNewInstance: true });
     this.noble = noble;
     this.opts.noble = noble;
