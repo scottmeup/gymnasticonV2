@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 cleanup() {
   echo "[start.sh] Cleanup: restarting bluetooth..."
