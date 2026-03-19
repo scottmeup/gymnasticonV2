@@ -500,7 +500,7 @@ export function parse(data) {
     throw new Error('unable to parse message');
   }
   const realtime = data.readUInt8(KEISER_VALUE_IDX_REALTIME);
-  if (realtime === 0 || (realtime > 128 && realtime < 255)) {
+  if (realtime === 0 || (realtime >= 128 && realtime <= 227)) {
     // Realtime data received
     const power = data.readUInt16LE(KEISER_VALUE_IDX_POWER);
     const cadence = Math.round(data.readUInt16LE(KEISER_VALUE_IDX_CADENCE) / 10);
