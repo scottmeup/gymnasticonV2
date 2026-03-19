@@ -85,6 +85,7 @@ export class App {
     this.speedOptions = { ...defaults.speedFallback, ...(opts.speedFallback || {}) }; // Merge caller overrides with sensible defaults for speed estimation.
     this.kinematics = { // Maintain cumulative wheel/crank state for CSC notifications.
       lastTimestamp: null, // Last time we integrated cadence/speed samples.
+      startTimestamp: null,
       crankRevolutions: 0, // Floating-point accumulator for crank revolutions so we can wrap at 16 bits cleanly.
       wheelRevolutions: 0 // Floating-point accumulator for wheel revolutions (32-bit field in BLE spec).
     };
@@ -544,7 +545,13 @@ export class App {
     return /already (?:start(ed)? )?scanning/i.test(message) || /scan already in progress/i.test(message);
   }
 
-  async probeNobleScan(adapterName) {
+async probeNobleScan(adapterName) {
+    // HCI_CHANNEL_USER mode manages adapter state directly; skip the probe
+    // scan since it consumes the leScanParametersSet event that gap.js needs.
+    if (process.env.GYMNASTICON_SKIP_SCAN_PROBE === '1') {
+      this.logger.log(`[gym-app] skipping scan probe (GYMNASTICON_SKIP_SCAN_PROBE=1)`);
+      return true;
+    }
     // Teaching note: a short scan start/stop confirms noble is actually usable.
     if (!this.noble?.startScanningAsync || !this.noble?.stopScanningAsync) {
       return false;
@@ -961,23 +968,21 @@ export class App {
     this.kinematics.wheelRevolutions += wheelIncrement; // Accumulate wheel revolutions for the CSC service.
     this.kinematics.wheelRevolutions %= 0x100000000; // Apply 32-bit wrap so the counter mirrors BLE behavior.
 
-    const newRevolutions = Math.floor(this.kinematics.crankRevolutions) & 0xffff;
-    if (newRevolutions !== this.crank.revolutions) {
-      const fracRevs = this.kinematics.crankRevolutions - Math.floor(this.kinematics.crankRevolutions);
-      const timeOfLastRev = safeCadence > 0
-        ? now - (fracRevs / (safeCadence / 60))
-        : now;
-      this.crank = {
-        timestamp: timeOfLastRev,
-        revolutions: newRevolutions,
-      };
+    if (this.kinematics.startTimestamp === null) {
+      this.kinematics.startTimestamp = now;
     }
+    const elapsed = now - this.kinematics.startTimestamp;
 
+    this.crank = {
+      timestamp: elapsed,
+      revolutions: Math.floor(this.kinematics.crankRevolutions) & 0xffff,
+    };
 
-    this.wheel = { // Build the BLE-friendly wheel snapshot (32-bit revolutions + timestamp in seconds).
-      timestamp: now,
+    this.wheel = {
+      timestamp: elapsed,
       revolutions: Math.floor(this.kinematics.wheelRevolutions) >>> 0,
     };
+
   }
 
   publishTelemetry() { // Push the latest power/cadence/speed state to BLE and ANT+ consumers.
@@ -991,17 +996,21 @@ export class App {
     }
   }
 
-
   onPedalStroke(timestamp) {
     this.pingInterval.reset();
     const cadence = this.simulation.cadence ?? this.currentCadence; // Use simulated cadence when bot mode drives the app.
     const speed = estimateSpeedMps(cadence, this.speedOptions); // Estimate speed for simulation strokes so CSC stays alive.
-    this.currentCadence = cadence;  // Track cadence for ANT+/BLE ping intervals.
+    this.currentCadence = cadence; // Track cadence for ANT+/BLE ping intervals.
+    this.integrateKinematics(cadence, speed, timestamp); // Update cumulative crank/wheel counters based on the simulated stroke.
+
+    //this.logger.log(`pedal stroke [timestamp=${timestamp} revolutions=${this.crank.revolutions} power=${this.power}W]`);
+    //this.publishTelemetry(); // Push the updated measurement to BLE/ANT clients.
+
+    // Convert timestamp from ms to s, then pass to integrateKinematics
     const timestampSeconds = timestamp > 1e10 ? timestamp / 1000 : timestamp;
     this.integrateKinematics(cadence, speed, timestampSeconds);
-    this.publishTelemetry();
-  }
 
+  }
   onPingInterval() {
     debuglog(`pinging app since no stats or pedal strokes for ${this.pingInterval.interval}s`);
     this.publishTelemetry(); // Re-send the last known measurement so connected apps stay alive.

@@ -1,0 +1,11 @@
+lib/*
+node_modules
+
+*.sw*
+*~
+
+
+deploy/pi-sdcard/pi-gen
+build.log
+deploy/releases/*.zip
+deploy/releases/image_2025-11-08-Gymnasticon-lite.zip

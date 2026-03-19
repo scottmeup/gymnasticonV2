@@ -10,8 +10,8 @@ export const defaults = {
   // bike options
   bike: 'autodetect',            // allow Gymnasticon to pick a bike profile at runtime
   defaultBike: 'keiser',         // fallback profile when autodetect sees nothing
-  bikeReceiveTimeout: 60,         // seconds before we consider bike telemetry stale
-  bikeConnectTimeout: 60,        // seconds to wait while establishing a connection (was 0, caused infinite hangs)
+  bikeReceiveTimeout: 10,         // seconds before we consider bike telemetry stale
+  bikeConnectTimeout: 30,        // seconds to wait while establishing a connection (was 0, caused infinite hangs)
   bikeAdapter: 'hci0',           // BLE adapter used to connect to the bike (BlueZ index)
 
   // flywheel bike options
