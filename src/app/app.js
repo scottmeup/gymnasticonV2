@@ -764,6 +764,7 @@ export class App {
           
           this.pingInterval.reset(); // Kick off the BLE keep-alive timer so Zwift sees data even when you pause pedaling.
           this.statsTimeout.reset(); // Start the "bike telemetry" watchdog so we can log when stats go stale.
+          if (this.healthMonitor) this.healthMonitor.recordMetric('bikeStats', { power: 0, cadence: 0 }); // Reset health monitor timestamp on connect so stale check doesn't fire immediately.
           // Teaching note: stay in the loop and wait for a disconnect/timeout so
           // we can reconnect without killing the whole systemd service.
           await this.waitForRestartSignal();
