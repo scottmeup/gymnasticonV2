@@ -25,7 +25,6 @@ export class BleServer extends EventEmitter {
     this.bleno.setServicesAsync = util.promisify(this.bleno.setServices);
   }
 
-  /** Start advertising and wait for a connection. */
   async start() {
     if (this.state !== 'stopped') {
       throw new Error('already started');
@@ -33,13 +32,21 @@ export class BleServer extends EventEmitter {
 
     this.state = 'starting';
     this.connectionCount = 0; // Teaching note: reset connection tracking on each start.
-
     if (this.bleno.state !== 'poweredOn') {
-      const [state] = await once(this.bleno, 'stateChange');
-      if (state !== 'poweredOn') {
-        this.state = 'stopped';
-        throw new Error(`Bluetooth adapter failed to power on: ${state}`);
-      }
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          this.bleno.off('stateChange', onState);
+          reject(new Error(`Bluetooth adapter not ready (state: ${this.bleno.state})`));
+        }, 5000);
+        const onState = (state) => {
+          if (state === 'poweredOn') {
+            clearTimeout(timeout);
+            this.bleno.off('stateChange', onState);
+            resolve();
+          }
+        };
+        this.bleno.on('stateChange', onState);
+      });
     }
 
     await this.bleno.startAdvertisingAsync(this.name, this.uuids);
